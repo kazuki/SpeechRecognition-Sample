@@ -1,0 +1,24 @@
+{
+  "name": "asr-client",
+  "version": "0.1.0",
+  "description": "This library is SpeechRecognition API (Web Speech API) compatible implementation for various cloud-based speech recognition engines",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kazuki/SpeechRecognition-Sample.git"
+  },
+  "author": "Kazuki Oikawa",
+  "license": "AGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/kazuki/SpeechRecognition-Sample/issues"
+  },
+  "homepage": "https://github.com/kazuki/SpeechRecognition-Sample#readme",
+  "devDependencies": {
+    "typescript": "^3.9.7"
+  }
+}

@@ -1,0 +1,7 @@
+*.js
+package-lock.json
+poetry.lock
+node_modules
+dist
+__pycache__
+*.egg-info

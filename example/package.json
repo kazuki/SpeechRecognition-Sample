@@ -1,0 +1,15 @@
+{
+  "devDependencies": {
+    "copy-webpack-plugin": "^6.0.3",
+    "file-loader": "^6.0.0",
+    "null-loader": "^4.0.0",
+    "ts-loader": "^8.0.2",
+    "typescript": "^3.9.7",
+    "webpack": "^4.44.1",
+    "webpack-cli": "^3.3.12",
+    "webpack-dev-server": "^3.11.0"
+  },
+  "dependencies": {
+    "asr-client": "file:../asr-client"
+  }
+}

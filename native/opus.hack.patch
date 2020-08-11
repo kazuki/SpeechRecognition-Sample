@@ -1,0 +1,22 @@
+diff --git a/src/opus_encoder.c b/src/opus_encoder.c
+index 7b5f0abf..5851a243 100644
+--- a/src/opus_encoder.c
++++ b/src/opus_encoder.c
+@@ -165,6 +165,9 @@ static const opus_int32 fec_thresholds[] = {
+         22000, 1000, /* FB */
+ };
+ 
++static float _hack_vad_prob = 0.0f;
++float opus_get_last_vad_prob(void) { return _hack_vad_prob; }
++
+ int opus_encoder_get_size(int channels)
+ {
+     int silkEncSizeBytes, celtEncSizeBytes;
+@@ -1129,6 +1132,7 @@ opus_int32 opus_encode_native(OpusEncoder *st, const opus_val16 *pcm, int frame_
+        run_analysis(&st->analysis, celt_mode, analysis_pcm, analysis_size, frame_size,
+              c1, c2, analysis_channels, st->Fs,
+              lsb_depth, downmix, &analysis_info);
++       _hack_vad_prob = analysis_info.activity_probability;
+ 
+        /* Track the peak signal energy */
+        if (!is_silence && analysis_info.activity_probability > DTX_ACTIVITY_THRESHOLD)
