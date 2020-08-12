@@ -23,9 +23,6 @@ export class SpeechRecognitionBase implements SpeechRecognition {
 
   constructor() {
     this.wasm_module = WebAssembly.compileStreaming(fetch('opus.wasm'));
-    this.wasm_module.then(x => {
-      console.log(x);
-    });
   }
 
   start(): void {
@@ -33,16 +30,19 @@ export class SpeechRecognitionBase implements SpeechRecognition {
       throw new Error('start() must be after end event');
     this.state = State.Preparing;
 
-    const context = new AudioContext({
-      sampleRate: 48000,
+    const ws_promise = new Promise<WebSocket>((resolve, reject) => {
+      const ws = new WebSocket((location.protocol === 'http:' ? 'ws' : 'wss') + '://' + location.host + '/ws');
+      this.cleanup_functions.push(() => ws.close());
+      ws.onopen = () => resolve(ws);
+      ws.onerror = (e) => reject(e);
     });
+    const context = new AudioContext();
     this.cleanup_functions.push(() => context.close());
     const device_constraints = {
       audio: {
         channelCount: 1,
-        sampleRate: 48000,
         noiseSuppression: false,
-        autoGainControl: true,
+        autoGainControl: false,
         echoCancellation: false,
       },
       video: false,
@@ -61,9 +61,9 @@ export class SpeechRecognitionBase implements SpeechRecognition {
     });
 
     Promise.all([
-      this.wasm_module, worklet_module, track_promise,
+      this.wasm_module, worklet_module, track_promise, ws_promise,
     ]).then(([
-      wasm_module, _, [stream, track],
+      wasm_module, _, [stream, track], ws,
     ]) => {
       const src_node =
         context.createMediaStreamTrackSource ?
@@ -75,17 +75,53 @@ export class SpeechRecognitionBase implements SpeechRecognition {
           module: wasm_module,
         }
       });
+      let attack_time_threshold = 0.2;  // 100[ms]
+      let release_time_threshold = 1;   // 1000[ms]
+      let attack_time = 0, release_time = 0;
+      let recognition_running = false;
+      let buffer: ArrayBuffer[] = [];
       worklet_node.port.onmessage = (m) => {
         const opus_vad = m.data.opus_vad as number;
-        if (opus_vad > 0.5)
-          console.log(opus_vad.toPrecision(3));
+        const opus_packet = m.data.packet as ArrayBuffer;
+        const opus_duration = m.data.duration as number;
+        if (recognition_running) {
+          if (opus_vad < 0.8) {
+            release_time += opus_duration;
+            if (release_time >= release_time_threshold) {
+              recognition_running = false;
+              attack_time = release_time = 0;
+              console.log('[STOP]');
+              if (!this.continuous)
+                this.stop();
+              return;
+            }
+          } else {
+            release_time = 0;
+          }
+          ws.send(opus_packet);
+        } else {
+          if (opus_vad >= 0.8) {
+            attack_time += opus_duration;
+            console.log(opus_vad, attack_time);
+            buffer.push(opus_packet);
+            if (attack_time >= attack_time_threshold) {
+              recognition_running = true;
+              attack_time = release_time = 0;
+              buffer.forEach(x => ws.send(x));
+              buffer.splice(0, buffer.length);
+              console.log('[START]');
+            }
+          } else {
+            attack_time = 0;
+          }
+        }
       };
       src_node.connect(worklet_node);
-      window.setTimeout(() => {
-        this.stop();
-      }, 1000);
       context.resume();
       this.state = State.Running;
+    }, _ => {
+      console.log(_);
+      this.abort();
     });
   }
   stop(): void {
@@ -93,6 +129,16 @@ export class SpeechRecognitionBase implements SpeechRecognition {
       throw new Error('not implemented');
     if (this.state !== State.Running)
       throw new Error('recognition not running');
+    this.cleanup();
+  }
+  abort(): void {
+    if (this.state === State.Preparing)
+      throw new Error('not implemented');
+    if (this.state !== State.Running)
+      throw new Error('recognition not running');
+    this.cleanup();
+  }
+  private cleanup(): void {
     this.state = State.Stopping;
     this.cleanup_functions.forEach(f => {
       try {
@@ -100,9 +146,7 @@ export class SpeechRecognitionBase implements SpeechRecognition {
       } catch {}
     });
     this.cleanup_functions.splice(0, this.cleanup_functions.length);
-  }
-  abort(): void {
-    throw new Error("Method not implemented.");
+    this.state = State.Stopped;
   }
   
   addEventListener<K extends "audioend" | "audiostart" | "end" | "error" | "nomatch" | "result" | "soundend" | "soundstart" | "speechend" | "speechstart" | "start">(type: K, listener: (this: SpeechRecognition, ev: SpeechRecognitionEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
@@ -169,7 +213,7 @@ if (!window.SpeechGrammarList) {
   window.SpeechGrammarList = SpeechGrammarList;
 }
 
-enum State {
+const enum State {
   Preparing = 0,
   Running = 1,
   Stopping = 2,
