@@ -2,12 +2,15 @@ diff --git a/src/opus_encoder.c b/src/opus_encoder.c
 index 7b5f0abf..5851a243 100644
 --- a/src/opus_encoder.c
 +++ b/src/opus_encoder.c
-@@ -165,6 +165,9 @@ static const opus_int32 fec_thresholds[] = {
+@@ -165,6 +165,12 @@ static const opus_int32 fec_thresholds[] = {
          22000, 1000, /* FB */
  };
  
 +static float _hack_vad_prob = 0.0f;
 +float opus_get_last_vad_prob(void) { return _hack_vad_prob; }
++
++int opus_encoder_ctl0(OpusEncoder *st, int request, int v) { return opus_encoder_ctl(st, request, v); }
++int opus_encoder_ctl1(OpusEncoder *st, int request, int *p) { return opus_encoder_ctl(st, request, p); }
 +
  int opus_encoder_get_size(int channels)
  {

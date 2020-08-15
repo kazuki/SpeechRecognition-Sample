@@ -52,8 +52,16 @@ class VadAndEncodeProcessor extends AudioWorkletProcessor {
       this.opus_buf_ptr = this.wasm.malloc(FRAME_SIZE * 4);
       this.opus_buf = new Float32Array(this.wasm.memory.buffer, this.opus_buf_ptr, FRAME_SIZE);
       this.opus_packet = this.wasm.malloc(OPUS_PACKET_MAX_SIZE);
-      this.opus_handle = this.wasm.opus_encoder_create(TARGET_SAMPLING_RATE, 1, 2048, err);
+      this.opus_handle = this.wasm.opus_encoder_create(TARGET_SAMPLING_RATE, 1, 2048 /* OPUS_APPLICATION_VOIP */, err);
+      let preskip = 0;
+      if (this.wasm.opus_encoder_ctl1(this.opus_handle, 4027 /* OPUS_GET_LOOKAHEAD_REQUEST */, err) === 0)
+        preskip = new Uint32Array(this.wasm.memory.buffer, err, 1)[0];
       this.wasm.free(err);
+      this.port.postMessage({
+        input_sample_rate: this.sampleRate,
+        pre_skip: preskip,
+        version: this.get_opus_version_string().replace('-dirt', ''),
+      });
     }, e => {
       console.log(e);
       this.port.postMessage({
@@ -117,6 +125,19 @@ class VadAndEncodeProcessor extends AudioWorkletProcessor {
     }
     return true;
   }
+
+  get_opus_version_string(): string {
+    if (!this.wasm) return '';
+    const u8 = new Uint8Array(this.wasm.memory.buffer, this.wasm.opus_get_version_string());
+    let len = 0;
+    for (; len < 1024; len++) {
+      if (u8[len] === 0) {
+        len --;
+        break
+      }
+    }
+    return String.fromCharCode(...u8.subarray(0, len));
+  }
 }
 
 interface WasmExports {
@@ -124,8 +145,11 @@ interface WasmExports {
   free(ptr: number): void;
   memory: WebAssembly.Memory;
 
+  opus_get_version_string(): number;
   opus_encoder_create(fs: number, ch: number, app: number, err_ptr: number): number;
   opus_encode_float(handle: number, buf: number, size: number, packet: number, max_size: number): number;
+  opus_encoder_ctl0(handle: number, request: number, value: number): number;
+  opus_encoder_ctl1(handle: number, request: number, ptr: number): number;
   opus_get_last_vad_prob(): number;
 
   speex_resampler_init(nb_channels: number, in_rate: number, out_rate: number, quality: number, err_ptr: number): number;

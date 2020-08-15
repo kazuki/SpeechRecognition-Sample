@@ -56,7 +56,10 @@ export class SpeechRecognitionBase implements SpeechRecognition {
         tracks[0].stop();
         throw new Error('already stopped');
       }
-      this.cleanup_functions.push(() => tracks[0].stop());
+      this.cleanup_functions.push(() => {
+        tracks[0].stop();
+        this.dispatchEvent(new Event('audioend'));
+      });
       return [stream, tracks[0]] as [MediaStream, MediaStreamTrack];
     });
 
@@ -75,24 +78,28 @@ export class SpeechRecognitionBase implements SpeechRecognition {
           module: wasm_module,
         }
       });
-      let attack_time_threshold = 0.2;  // 100[ms]
-      let release_time_threshold = 1;   // 1000[ms]
+      const preattack_duration = 0.5;  // [s]
+      const attack_threshold = 0.8;  // VAD prob
+      const release_threshold = attack_threshold;  // VAD prob
+      const attack_time_threshold = 0.2;  // [s]
+      const release_time_threshold = 1;   // [s]
       let attack_time = 0, release_time = 0;
       let recognition_running = false;
-      let buffer: ArrayBuffer[] = [];
-      worklet_node.port.onmessage = (m) => {
+      let fired_soundstart = false;
+      const buffer: ArrayBuffer[] = [];
+      const opus_packet_handler = (m: MessageEvent) => {
         const opus_vad = m.data.opus_vad as number;
         const opus_packet = m.data.packet as ArrayBuffer;
         const opus_duration = m.data.duration as number;
         if (recognition_running) {
-          if (opus_vad < 0.8) {
+          if (!this.continuous && opus_vad < release_threshold) {
             release_time += opus_duration;
             if (release_time >= release_time_threshold) {
               recognition_running = false;
               attack_time = release_time = 0;
-              console.log('[STOP]');
-              if (!this.continuous)
-                this.stop();
+              ws.send(new ArrayBuffer(0));
+              this.dispatchEvent(new Event('speechend'));
+              this.dispatchEvent(new Event('soundend'));
               return;
             }
           } else {
@@ -100,25 +107,58 @@ export class SpeechRecognitionBase implements SpeechRecognition {
           }
           ws.send(opus_packet);
         } else {
-          if (opus_vad >= 0.8) {
+          while (preattack_duration + attack_time < buffer.length * opus_duration)
+            buffer.shift();
+          buffer.push(opus_packet);
+          if (opus_vad >= attack_threshold) {
+            if (!fired_soundstart) {
+              fired_soundstart = true;
+              this.dispatchEvent(new Event('soundstart'));
+            }
             attack_time += opus_duration;
-            console.log(opus_vad, attack_time);
-            buffer.push(opus_packet);
             if (attack_time >= attack_time_threshold) {
               recognition_running = true;
               attack_time = release_time = 0;
               buffer.forEach(x => ws.send(x));
               buffer.splice(0, buffer.length);
-              console.log('[START]');
+              this.dispatchEvent(new Event('speechstart'));
             }
           } else {
             attack_time = 0;
           }
         }
       };
+      worklet_node.port.onmessage = (m) => {
+        const cfg = m.data;
+        cfg['engine-config'] = {
+          enable_automatic_punctuation: true,
+          single_utterance: false,
+          interim_results: true,
+        };
+        ws.send(JSON.stringify(cfg));
+        worklet_node.port.onmessage = opus_packet_handler;
+        this.dispatchEvent(new Event('audiostart'));
+      };
       src_node.connect(worklet_node);
       context.resume();
       this.state = State.Running;
+      ws.onmessage = (e) => {
+        const evt = new Event('result');
+        const resp = JSON.parse(e.data);
+        // @ts-ignore
+        evt.results = resp;
+        this.dispatchEvent(evt);
+        if (!recognition_running) {
+          if (resp.length == 0) {
+            this.stop();
+          } else {
+            const last_result = resp[resp.length - 1];
+            if (last_result['is_final'])
+              this.stop();
+          }
+        }
+      };
+      this.dispatchEvent(new Event('start'));
     }, _ => {
       console.log(_);
       this.abort();
@@ -147,6 +187,7 @@ export class SpeechRecognitionBase implements SpeechRecognition {
     });
     this.cleanup_functions.splice(0, this.cleanup_functions.length);
     this.state = State.Stopped;
+    this.dispatchEvent(new Event('end'));
   }
   
   addEventListener<K extends "audioend" | "audiostart" | "end" | "error" | "nomatch" | "result" | "soundend" | "soundstart" | "speechend" | "speechstart" | "start">(type: K, listener: (this: SpeechRecognition, ev: SpeechRecognitionEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;

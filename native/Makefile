@@ -16,5 +16,5 @@ $(TARGET):
 	emmake make -j4 && \
 	cd ..; \
 	emcc -o $@ -O2 -s FILESYSTEM=0 -s INITIAL_MEMORY=134217728 \
-		-s EXPORTED_FUNCTIONS="['_opus_encoder_create','_opus_encode_float','_opus_encoder_ctl','_opus_encoder_destroy','_opus_get_last_vad_prob','_speex_resampler_init','_speex_resampler_destroy','_speex_resampler_process_interleaved_float']" \
+		-s EXPORTED_FUNCTIONS="['_opus_get_version_string','_opus_encoder_create','_opus_encode_float','_opus_encoder_ctl','_opus_encoder_ctl0','_opus_encoder_ctl1','_opus_encoder_destroy','_opus_get_last_vad_prob','_speex_resampler_init','_speex_resampler_destroy','_speex_resampler_process_interleaved_float']" \
 		opus/.libs/libopus.a speexdsp/libspeexdsp/.libs/libspeexdsp.a
