@@ -131,9 +131,12 @@ export class SpeechRecognitionBase implements SpeechRecognition {
       worklet_node.port.onmessage = (m) => {
         const cfg = m.data;
         cfg['engine-config'] = {
+          lang: this.lang,
+          continuous: this.continuous,
+          max_alternatives: this.maxAlternatives,
           enable_automatic_punctuation: true,
           single_utterance: false,
-          interim_results: true,
+          interim_results: this.interimResults,
         };
         ws.send(JSON.stringify(cfg));
         worklet_node.port.onmessage = opus_packet_handler;

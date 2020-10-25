@@ -30,3 +30,70 @@ I plan to support the following real-time speech recognition engines.
 WebAssembly file and opus patch file is under [The 3-Clause BSD License](https://opensource.org/licenses/BSD-3-Clause).
 
 All others is under the [AGPL](https://opensource.org/licenses/AGPL-3.0). If you want to other license, please contact me.
+
+
+## Client <--> Server Protocol
+
+```
+[CLIENT]       [SERVER]
+   |               |
+   |  <init msg>   |
+   +-------------->|
+   | <opus packet> |
+   +-------------->|
+   +-------------->|
+   +-------------->|
+   |  <resp msg>   |
+   |<--------------|
+   | <opus packet> |
+   +-------------->|
+   +-------------->|
+   +-------------->|
+   |  <resp msg>   |
+   |<--------------|
+   :               :
+```
+
+`resp msg` = `result message` | `done message` | `error message` async
+
+### initialize message
+
+```
+{
+   "pre_skip": <number>,  # opus pre-skip value (ogg)
+   "version": <string>,  # encoder version string (ogg)
+
+   "engine": <string>,  # cloud ASR engine option (one of ["google-v1"])
+   "engine-config": <object>,  # engine configuration
+}
+```
+
+### result message
+
+```
+{
+  "is_final": <boolean>,
+  "alternatives": [{
+    "transcript": <string>,
+    "confidence": <float>,
+  }]
+}
+```
+
+### done message
+
+```
+{
+   "type": "done"
+}
+```
+
+### error message
+
+```
+{
+  "type": "error",
+  "error": <string>,
+  "message": <string>,
+}
+```

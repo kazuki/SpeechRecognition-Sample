@@ -9,6 +9,8 @@ button.addEventListener('click', () => {
     button.innerText = 'Stop';
     engine = new GoogleSpeechToText();
     engine.continuous = true;
+    engine.interimResults = true;
+    engine.lang = 'ja-JP';
     engine.onstart = (e) => console.log('start:', e);
     engine.onend = (e) => console.log('end:', e);
     engine.onaudiostart = (e) => console.log('audiostart:', e);
