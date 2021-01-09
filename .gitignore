@@ -1,7 +1,10 @@
-*.js
-package-lock.json
-poetry.lock
-node_modules
-dist
-__pycache__
-*.egg-info
+.vscode
+
+/proxy-server/package-lock.json
+/proxy-server/poetry.lock
+/proxy-server/*.egg-info
+/proxy-server/asr_proxy_server/__pycache__
+
+/*/node_modules
+/*/dist
+

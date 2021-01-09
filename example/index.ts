@@ -21,16 +21,15 @@ button.addEventListener('click', () => {
     engine.onspeechend = (e) => console.log('speechend:', e);
     engine.onresult = (e) => {
       let s = '';
-      const results: any = e.results;
-      results.forEach((x: any) => {
-        s += x['alternatives'][0]['transcript'] + '\n';
+      const { results } = e;
+      (results as any).forEach((x: any) => {
+        s += `${x['alternatives'][0]['transcript']}\n`;
       });
       textarea.value = s;
     };
     engine.start();
   } else {
-    if (engine)
-      engine.stop();
+    if (engine) engine.stop();
     engine = undefined;
     button.innerText = 'Start';
   }
