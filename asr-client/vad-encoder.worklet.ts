@@ -135,14 +135,12 @@ class VadAndEncodeProcessor extends AudioWorkletProcessor {
         OPUS_PACKET_MAX_SIZE
       );
       const packet = this.wasm.memory.buffer.slice(this.opus_packet, this.opus_packet + packetSize);
-      this.port.postMessage(
-        {
-          opus_vad: this.wasm.opus_get_last_vad_prob(),
-          packet,
-          duration: this.packetDuration,
-        },
-        [packet]
-      );
+      const msg: IPacketMessage = {
+        opus_vad: this.wasm.opus_get_last_vad_prob(),
+        packet,
+        duration: this.packetDuration,
+      };
+      this.port.postMessage(msg, [packet]);
       this.opus_buf_filled = 0;
     }
     return true;
@@ -194,6 +192,12 @@ interface WasmExports {
     out_ptr: number,
     out_len_ptr: number
   ): number;
+}
+
+export interface IPacketMessage {
+  opus_vad: number;
+  packet: ArrayBuffer;
+  duration: number;
 }
 
 registerProcessor('vad-encoder', VadAndEncodeProcessor);

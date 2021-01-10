@@ -12,7 +12,10 @@ button.addEventListener('click', () => {
     engine.interimResults = true;
     engine.lang = 'ja-JP';
     engine.onstart = (e) => console.log('start:', e);
-    engine.onend = (e) => console.log('end:', e);
+    engine.onend = (e) => {
+      console.log('end:', e);
+      button.innerText = 'Start';
+    };
     engine.onaudiostart = (e) => console.log('audiostart:', e);
     engine.onaudioend = (e) => console.log('audioend:', e);
     engine.onsoundstart = (e) => console.log('soundstart:', e);
@@ -22,8 +25,8 @@ button.addEventListener('click', () => {
     engine.onresult = (e) => {
       let s = '';
       const { results } = e;
-      (results as any).forEach((x: any) => {
-        s += `${x['alternatives'][0]['transcript']}\n`;
+      Array.from(results).forEach((x) => {
+        s += `${x[0].transcript}\n`;
       });
       textarea.value = s;
     };

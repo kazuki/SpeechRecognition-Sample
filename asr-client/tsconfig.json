@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["DOM", "DOM.Iterable", "WebWorker", "ES2017"],
-    "module": "CommonJS",
+    "module": "es2015",
     "declaration": true,
     "strict": true,
     "esModuleInterop": true,

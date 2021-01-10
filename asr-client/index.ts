@@ -1,4 +1,4 @@
-import { AmiVoice } from './amivoice';
-import { GoogleSpeechToText } from './google-speech-to-text';
+import { AmiVoice } from './AmiVoice';
+import { GoogleSpeechToText } from './GoogleSpeechToText';
 
 export { AmiVoice, GoogleSpeechToText };
