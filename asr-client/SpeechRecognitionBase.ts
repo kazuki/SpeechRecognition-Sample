@@ -105,6 +105,7 @@ function createSession(
     cleanup_funcs: [],
     owner: sr,
   };
+  const finals: SpeechRecognitionResult[] = [];
   const context = createAudioContext(state);
   const workletPromise = createWorkletNode(state, wasmModule, context);
   const srcNodePromise = openAudioInputDevice(state, context);
@@ -148,8 +149,13 @@ function createSession(
       ws.onmessage = (e) => {
         const evt = new Event('result');
         const resp = JSON.parse(e.data);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const curResults = createResultList(resp.map((x: any) => createResult(x)));
         // @ts-ignore
-        evt.results = createResultList(resp.map((x) => createResult(x)));
+        evt.results = [...finals, ...curResults];
+        for (let i = 0; i < curResults.length; i += 1) {
+          if (curResults[i].isFinal) finals.push(curResults[i]);
+        }
         sr.dispatchEvent(evt);
         if (!state.recognizing) {
           if (resp.length === 0) {

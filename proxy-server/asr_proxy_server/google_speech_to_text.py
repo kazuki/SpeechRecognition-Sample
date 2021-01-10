@@ -1,7 +1,6 @@
 from asyncio import Queue
 from dataclasses import dataclass
-from typing import (
-    Any, AsyncIterator, Dict, List, Optional, Sequence, Tuple, Union)
+from typing import Any, AsyncIterator, Dict, Optional, Sequence, Tuple, Union
 
 from asr_proxy_server.engine_base import (
     Engine, SpeechRecognitionAlternative, SpeechRecognitionConfig,
@@ -33,7 +32,6 @@ class GoogleSpeechToTextV1(Engine):
             ('model', None),
             ('use_enhanced', None),
         ]
-        self._finals: List[SpeechRecognitionResult] = []
         self._queue: Queue[Optional[V1.StreamingRecognizeRequest]] = Queue()
         self._client: Optional[V1.services.speech.SpeechAsyncClient] = None
         self._stream: Optional[Any] = None
@@ -103,7 +101,7 @@ class GoogleSpeechToTextV1(Engine):
         except StopAsyncIteration:
             return SpeechRecognitionDone()
 
-        ret: SpeechRecognitionResultList = list(self._finals)
+        ret: SpeechRecognitionResultList = []
         for srr in resp.results:
             alternatives = [SpeechRecognitionAlternative(
                 transcript=alt.transcript, confidence=alt.confidence,
@@ -112,8 +110,6 @@ class GoogleSpeechToTextV1(Engine):
                 alternatives=alternatives, is_final=srr.is_final,
                 stability=srr.stability)
             ret.append(tmp)
-            if tmp.is_final:
-                self._finals.append(tmp)
         return ret
 
     async def close(self) -> None:
